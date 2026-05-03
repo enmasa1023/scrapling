@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,7 +13,6 @@ from pathlib import Path
 import snscrape.modules.twitter as sntwitter
 from snscrape.base import ScraperException
 
-# Reduce noisy internal logs from snscrape retries.
 logging.getLogger("snscrape").setLevel(logging.CRITICAL)
 
 
@@ -85,16 +86,17 @@ def main() -> None:
     try:
         for scraper in scrapers:
             try:
-                for post in scraper.get_items():
-                    if not args.include_replies and post.inReplyToTweetId is not None:
-                        continue
-                    if not args.include_retweets and post.retweetedTweet is not None:
-                        continue
+                with contextlib.redirect_stderr(io.StringIO()):
+                    for post in scraper.get_items():
+                        if not args.include_replies and post.inReplyToTweetId is not None:
+                            continue
+                        if not args.include_retweets and post.retweetedTweet is not None:
+                            continue
 
-                    writer.write(format_post(post))
-                    total += 1
-                    if args.max_posts and total >= args.max_posts:
-                        break
+                        writer.write(format_post(post))
+                        total += 1
+                        if args.max_posts and total >= args.max_posts:
+                            break
 
                 if total > 0:
                     break
@@ -105,7 +107,7 @@ def main() -> None:
         if total == 0 and last_exc is not None:
             raise SystemExit(
                 "snscrapeで取得できませんでした。\n"
-                "原因: X側の仕様変更・ブロック（404/429等）で非公式取得が止まることがあります。\n\n"
+                "原因: X側の仕様変更・ブロック（403/404/429等）で非公式取得が止まることがあります。\n\n"
                 "対処案:\n"
                 "  1) 少し時間を置いて再実行\n"
                 "  2) VPN/会社ネットワーク等の制限を確認\n"
