@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import snscrape.modules.twitter as sntwitter
+from snscrape.base import ScraperException
 
 
 class ChunkedWriter:
@@ -99,6 +100,18 @@ def main() -> None:
 
             if args.max_posts and total >= args.max_posts:
                 break
+    except ScraperException as exc:
+        writer.close()
+        msg = str(exc)
+        raise SystemExit(
+            "snscrapeで取得できませんでした。\n"
+            "原因: X側の仕様変更・ブロック（404/429等）で非公式取得が止まることがあります。\n\n"
+            "対処案:\n"
+            "  1) 少し時間を置いて再実行\n"
+            "  2) VPN/会社ネットワーク等の制限を確認\n"
+            "  3) 公式API版(export_x_posts.py)を使う\n\n"
+            f"元エラー: {msg}"
+        )
     finally:
         writer.close()
 
