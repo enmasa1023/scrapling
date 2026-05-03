@@ -1,21 +1,18 @@
 #!/usr/bin/env python3
-"""Export publicly visible articles from a note.com /all page into txt files.
-
-Usage:
-  python note_public_to_txt.py --all-url https://note.com/shinkaron/all --out-dir output
-"""
+"""Export publicly visible articles from a note.com /all page into txt files."""
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import time
 from pathlib import Path
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
 
-UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 
 
 def fetch_html(url: str, session: requests.Session) -> str:
@@ -24,17 +21,60 @@ def fetch_html(url: str, session: requests.Session) -> str:
     return r.text
 
 
+def _collect_from_next_data(soup: BeautifulSoup) -> list[str]:
+    """Try to extract article links from Next.js bootstrap JSON."""
+    script = soup.find("script", id="__NEXT_DATA__")
+    if not script or not script.string:
+        return []
+    try:
+        data = json.loads(script.string)
+    except json.JSONDecodeError:
+        return []
+
+    links: set[str] = set()
+
+    def walk(node: object) -> None:
+        if isinstance(node, dict):
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+        elif isinstance(node, str) and re.match(r"^/[^/]+/n/[a-zA-Z0-9]+$", node):
+            links.add(node)
+
+    walk(data)
+    return sorted(links)
+
+
 def parse_article_links(all_html: str, base_url: str) -> list[str]:
     soup = BeautifulSoup(all_html, "html.parser")
     links: set[str] = set()
+
+    # 1) Standard anchor collection
     for a in soup.select("a[href]"):
         href = a.get("href", "")
         if not href or href.startswith("#"):
             continue
         full = urljoin(base_url, href)
-        if re.match(r"^https://note\.com/[^/]+/n/[a-zA-Z0-9]+", full):
+        if re.match(r"^https://note\.com/[^/]+/n/[a-zA-Z0-9]+$", full):
             links.add(full)
-    return sorted(links)
+
+    # 2) Next.js JSON fallback (for client-rendered pages)
+    for href in _collect_from_next_data(soup):
+        full = urljoin(base_url, href)
+        if re.match(r"^https://note\.com/[^/]+/n/[a-zA-Z0-9]+$", full):
+            links.add(full)
+
+    # 3) Raw regex fallback
+    m = re.findall(r'"(/[^/]+/n/[a-zA-Z0-9]+)"', all_html)
+    for href in m:
+        links.add(urljoin(base_url, href))
+
+    # Keep only links for the same author as /all URL
+    author = urlparse(base_url).path.strip("/").split("/")[0]
+    scoped = [u for u in links if re.match(fr"^https://note\.com/{re.escape(author)}/n/[a-zA-Z0-9]+$", u)]
+    return sorted(set(scoped))
 
 
 def parse_article(html: str, url: str) -> dict[str, str]:
@@ -48,9 +88,13 @@ def parse_article(html: str, url: str) -> dict[str, str]:
         title = soup.title.string.strip()
 
     published = ""
-    t = soup.find("time")
-    if t:
-        published = t.get("datetime", "").strip() or t.get_text(strip=True)
+    og_time = soup.find("meta", attrs={"property": "article:published_time"})
+    if og_time and og_time.get("content"):
+        published = og_time["content"].strip()
+    if not published:
+        t = soup.find("time")
+        if t:
+            published = t.get("datetime", "").strip() or t.get_text(strip=True)
 
     body = ""
     article = soup.find("article")
@@ -59,12 +103,7 @@ def parse_article(html: str, url: str) -> dict[str, str]:
     else:
         body = soup.get_text("\n", strip=True)
 
-    return {
-        "url": url,
-        "title": title,
-        "published": published,
-        "body": body,
-    }
+    return {"url": url, "title": title, "published": published, "body": body}
 
 
 def safe_filename(s: str) -> str:
@@ -79,8 +118,7 @@ def write_txt(article: dict[str, str], out_dir: Path, idx: int) -> Path:
     text = (
         f"Title: {article['title']}\n"
         f"Published: {article['published']}\n"
-        f"URL: {article['url']}\n"
-        f"\n"
+        f"URL: {article['url']}\n\n"
         f"{article['body']}\n"
     )
     path.write_text(text, encoding="utf-8")
@@ -104,7 +142,7 @@ def main() -> None:
     links = parse_article_links(all_html, args.all_url)
 
     if not links:
-        print("No public article links found.")
+        print("No public article links found. Try opening the /all page in browser to verify it's public.")
         return
 
     print(f"Found {len(links)} candidate articles")
