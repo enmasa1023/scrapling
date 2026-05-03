@@ -88,3 +88,19 @@ python .\export_x_posts_snscrape.py --username shinkaron --outdir .\x_archive --
 > 実行ポリシーで `Activate.ps1` が止められたら、PowerShellを管理者で開いて
 > `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` を一度実行してください。
 
+
+
+## 「scrapling で回避できないの？」への回答
+
+短く言うと、**安定的な回避はできません**。  
+`scrapling` はHTML取得や解析を助けるライブラリですが、XのGraphQL/APIブロックや認証要件そのものを恒久的に突破するものではありません。
+
+- 非公式スクレイピング（`snscrape` / ブラウザ自動化 / HTML解析）は、X側仕様変更で止まりやすい
+- 404/429/ログイン壁はスクレイパー側だけで完全回避し続けるのが難しい
+- 長期運用の安定性を優先するなら公式API利用が現実的
+
+そのため本ツールは、
+1) まず `snscrape` を試す
+2) 失敗が続く場合は公式API版へ切り替える
+
+という運用を推奨します。
