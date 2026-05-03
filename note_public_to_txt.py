@@ -77,6 +77,43 @@ def parse_article_links(all_html: str, base_url: str) -> list[str]:
     return sorted(set(scoped))
 
 
+def fetch_links_from_note_api(base_url: str, session: requests.Session, max_pages: int = 20) -> list[str]:
+    """Fallback to note public API used by the frontend.
+
+    This helps when /all HTML does not contain article URLs due to heavy client rendering.
+    """
+    author = urlparse(base_url).path.strip("/").split("/")[0]
+    if not author:
+        return []
+
+    links: set[str] = set()
+    for page in range(1, max_pages + 1):
+        api = (
+            f"https://note.com/api/v2/creators/{author}/contents"
+            f"?kind=note&page={page}"
+        )
+        r = session.get(api, timeout=25)
+        if r.status_code != 200:
+            break
+
+        try:
+            payload = r.json()
+        except ValueError:
+            break
+
+        data = payload.get("data") or {}
+        contents = data.get("contents") or []
+        if not contents:
+            break
+
+        for item in contents:
+            key = item.get("key")
+            if key:
+                links.add(f"https://note.com/{author}/n/{key}")
+
+    return sorted(links)
+
+
 def parse_article(html: str, url: str) -> dict[str, str]:
     soup = BeautifulSoup(html, "html.parser")
 
@@ -140,6 +177,8 @@ def main() -> None:
 
     all_html = fetch_html(args.all_url, s)
     links = parse_article_links(all_html, args.all_url)
+    if not links:
+        links = fetch_links_from_note_api(args.all_url, s)
 
     if not links:
         print("No public article links found. Try opening the /all page in browser to verify it's public.")
