@@ -59,3 +59,32 @@ python .\export_x_posts_snscrape.py --username shinkaron --outdir .\x_archive --
 ## 出力ファイル
 
 - `x_archive/` に `*_0001.txt`, `*_0002.txt`... と20MBごとに分割保存されます。
+
+
+## Windowsで `source` エラーが出る場合
+
+そのエラーは **PowerShell ではなく cmd.exe** で、Linux/macOS用コマンド（`source .venv/bin/activate`）を実行したときに出ます。
+
+### cmd.exe の正しい手順
+
+```bat
+cd %USERPROFILE%\OneDrive\Desktop
+py -m venv .venv
+.venv\Scripts\activate.bat
+pip install requests snscrape
+python export_x_posts_snscrape.py --username shinkaron --outdir .\x_archive --chunk-mb 20
+```
+
+### PowerShell の正しい手順
+
+```powershell
+cd $HOME\OneDrive\Desktop
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install requests snscrape
+python .\export_x_posts_snscrape.py --username shinkaron --outdir .\x_archive --chunk-mb 20
+```
+
+> 実行ポリシーで `Activate.ps1` が止められたら、PowerShellを管理者で開いて
+> `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` を一度実行してください。
+
