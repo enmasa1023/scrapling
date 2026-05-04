@@ -124,3 +124,27 @@ python export_x_posts_browser.py --username shinkaron --outdir ./x_archive --chu
 - UI変更で壊れる可能性はあります
 - 取得できるのは「表示できた範囲」が中心です
 - 長期安定は公式APIのほうが高いです
+
+## 既に開いているEdgeセッションを使いたい場合（手動ログイン省略寄り）
+
+可能です。`export_x_posts_browser_attach.py` は、**起動済みEdgeにCDP接続**して取得します。
+
+### 1) Edgeをリモートデバッグ付きで起動（Windows例）
+
+```bat
+"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --remote-debugging-port=9222 --user-data-dir="C:\temp\edge-cdp"
+```
+
+> そのEdgeで `https://x.com/shinkaron` を開いて、必要なら一度ログインしてください。
+
+### 2) 取得実行
+
+```bash
+pip install playwright
+python export_x_posts_browser_attach.py --username shinkaron --outdir ./x_archive --chunk-mb 20 --max-posts 500 --cdp http://127.0.0.1:9222
+```
+
+補足:
+- 既存タブに `https://x.com/shinkaron` があればそのタブを利用
+- なければ同じセッション内で新規タブを開いて取得
+- 完全ノーログイン保証ではない（セッション切れ時は再ログインが必要）
