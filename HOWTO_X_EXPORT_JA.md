@@ -104,3 +104,23 @@ python .\export_x_posts_snscrape.py --username shinkaron --outdir .\x_archive --
 2) 失敗が続く場合は公式API版へ切り替える
 
 という運用を推奨します。
+
+## APIなしで「見えている画面」から取る方法（ブラウザ自動化）
+
+「Xで普通に見えているなら取りたい」という場合は、`export_x_posts_browser.py` を使えます。
+これは**実ブラウザを開いて手動ログイン後、見えているタイムラインをスクロール収集**する方式です。
+
+```bash
+pip install playwright
+playwright install chromium
+python export_x_posts_browser.py --username shinkaron --outdir ./x_archive --chunk-mb 20 --max-posts 500
+```
+
+- ログイン壁が出たらブラウザで手動ログイン
+- タイムラインが見えたらターミナルで Enter
+- その後スクロールしながら抽出
+
+注意:
+- UI変更で壊れる可能性はあります
+- 取得できるのは「表示できた範囲」が中心です
+- 長期安定は公式APIのほうが高いです
