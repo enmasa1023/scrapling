@@ -109,7 +109,12 @@ def main() -> None:
     target = f"https://x.com/{args.username}"
     with sync_playwright() as pw:
         browser = pw.chromium.connect_over_cdp(args.cdp)
-        context = browser.contexts[0] if browser.contexts else browser.new_context()
+        if not browser.contexts:
+            raise SystemExit(
+                "接続先Edgeに利用可能なブラウザコンテキストがありません。\n"
+                "通常のEdgeではなく、--remote-debugging-port付きで起動したEdgeを指定してください。"
+            )
+        context = browser.contexts[0]
 
         page = None
         for p in context.pages:
@@ -125,6 +130,7 @@ def main() -> None:
             page = context.new_page()
             page.goto(target, wait_until="domcontentloaded")
 
+        print(f"Using page: {page.url}")
         total = export_from_page(page, args.username, writer, args.max_posts, args.scroll_wait_ms)
 
     writer.close()

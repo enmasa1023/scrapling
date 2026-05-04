@@ -151,3 +151,13 @@ python export_x_posts_browser_attach.py --username shinkaron --outdir ./x_archiv
 
 - 既定では、既存タブがなければ終了（= 既に開いているページ限定）
 - 新規タブを許可したい場合のみ `--allow-open-new-page` を付ける
+
+### 重要: 「既に開いているEdge」を直接つかむ条件
+
+`export_x_posts_browser_attach.py` は **CDP接続可能なEdge** にしか接続できません。  
+つまり、普通に起動したEdgeプロセスは対象外で、`--remote-debugging-port=9222` を付けて起動したEdgeが必要です。
+
+- 既存Edgeが通常起動のみの場合: そのままでは接続不可
+- 既存EdgeがCDP起動済みの場合: そのタブをそのまま利用可能
+
+スクリプト実行時に `Using page: https://x.com/shinkaron` と出れば、既存タブ利用に成功しています。
