@@ -146,5 +146,8 @@ python export_x_posts_browser_attach.py --username shinkaron --outdir ./x_archiv
 
 補足:
 - 既存タブに `https://x.com/shinkaron` があればそのタブを利用
-- なければ同じセッション内で新規タブを開いて取得
 - 完全ノーログイン保証ではない（セッション切れ時は再ログインが必要）
+
+
+- 既定では、既存タブがなければ終了（= 既に開いているページ限定）
+- 新規タブを許可したい場合のみ `--allow-open-new-page` を付ける

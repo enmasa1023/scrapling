@@ -97,6 +97,8 @@ def main() -> None:
     ap.add_argument("--max-posts", type=int, default=500)
     ap.add_argument("--cdp", default="http://127.0.0.1:9222")
     ap.add_argument("--scroll-wait-ms", type=int, default=1200)
+    ap.add_argument("--allow-open-new-page", action="store_true",
+                    help="If set, open a new tab when target page is not already open")
     args = ap.parse_args()
 
     outdir = Path(args.outdir)
@@ -115,6 +117,11 @@ def main() -> None:
                 page = p
                 break
         if page is None:
+            if not args.allow_open_new_page:
+                raise SystemExit(
+                    f"既存タブが見つかりません: {target}\n"
+                    "Edge側で対象ページを開いた状態で再実行してください。"
+                )
             page = context.new_page()
             page.goto(target, wait_until="domcontentloaded")
 
